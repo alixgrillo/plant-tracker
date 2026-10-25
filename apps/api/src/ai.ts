@@ -9,7 +9,7 @@ const SYSTEM_PROMPT =
   "You are a houseplant expert. Identify the plant from the photo and/or name and return care " +
   "guidance for an indoor setting as JSON with keys: commonName, scientificName, confidence " +
   "(low|medium|high), care { description, light, waterMinDays, waterMaxDays (integer days between " +
-  "waterings), waterNotes, healthSigns }. If unsure, use low confidence.";
+  "waterings), waterNotes, waterHow, healthSigns }. waterHow is 1-3 plain sentences on technique (e.g. soak until water drains from the pot, empty the saucer after 15 minutes, let the top inch of soil dry first, avoid wetting leaves). If unsure, use low confidence.";
 
 export class OpenAIIdentifier implements PlantIdentifier {
   private client: OpenAI;
@@ -35,3 +35,4 @@ export class OpenAIIdentifier implements PlantIdentifier {
     return identifyResultSchema.parse(JSON.parse(raw));
   }
 }
+

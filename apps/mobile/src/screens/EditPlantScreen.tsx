@@ -13,7 +13,7 @@ export function EditPlantScreen({ route, navigation }: Props) {
   const [saving, setSaving] = useState(false);
   const [f, setF] = useState({
     nickname: "", location: "", notes: "", description: "", light: "",
-    min: "", max: "", waterNotes: "", healthSigns: "",
+    min: "", max: "", waterNotes: "", waterHow: "", healthSigns: "",
   });
   const [hadCare, setHadCare] = useState(false);
   const set = (k: keyof typeof f) => (v: string) => setF((p) => ({ ...p, [k]: v }));
@@ -31,6 +31,7 @@ export function EditPlantScreen({ route, navigation }: Props) {
           min: p.care?.water_min_days?.toString() ?? "",
           max: p.care?.water_max_days?.toString() ?? "",
           waterNotes: p.care?.water_notes ?? "",
+          waterHow: p.care?.water_how ?? "",
           healthSigns: p.care?.health_signs ?? "",
         });
         setLoaded(true);
@@ -49,6 +50,7 @@ export function EditPlantScreen({ route, navigation }: Props) {
         waterMinDays: Number(f.min),
         waterMaxDays: Number(f.max),
         waterNotes: f.waterNotes,
+        waterHow: f.waterHow,
         healthSigns: f.healthSigns,
       });
       if (!parsed.success) {
@@ -85,6 +87,7 @@ export function EditPlantScreen({ route, navigation }: Props) {
       <Label t="Water every (min days)" /><TextInput style={s.input} keyboardType="number-pad" value={f.min} onChangeText={set("min")} />
       <Label t="Water every (max days)" /><TextInput style={s.input} keyboardType="number-pad" value={f.max} onChangeText={set("max")} />
       <Label t="Watering notes" /><TextInput style={[s.input, s.multi]} multiline value={f.waterNotes} onChangeText={set("waterNotes")} />
+      <Label t="How to water" /><TextInput style={[s.input, s.multi]} multiline value={f.waterHow} onChangeText={set("waterHow")} />
       <Label t="Healthy signs" /><TextInput style={[s.input, s.multi]} multiline value={f.healthSigns} onChangeText={set("healthSigns")} />
       <Button title={saving ? "Saving..." : "Save"} onPress={save} disabled={saving} />
     </ScrollView>
@@ -100,3 +103,7 @@ const s = StyleSheet.create({
   input: { borderWidth: 1, borderColor: "#ccc", borderRadius: 6, padding: 10, color: "#111" },
   multi: { minHeight: 64, textAlignVertical: "top" },
 });
+
+
+
+

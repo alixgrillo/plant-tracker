@@ -5,7 +5,7 @@ const result = {
   commonName: "Pothos",
   scientificName: "Epipremnum aureum",
   confidence: "high" as const,
-  care: { description: "d", light: "indirect", waterMinDays: 7, waterMaxDays: 10, waterNotes: "n", healthSigns: "h" },
+  care: { description: "d", light: "indirect", waterMinDays: 7, waterMaxDays: 10, waterNotes: "n", waterHow: "Soak until it drains.", healthSigns: "h" },
 };
 
 const make = () =>
@@ -33,3 +33,4 @@ describe("POST /identify", () => {
     expect(res.statusCode).toBe(403);
   });
 });
+

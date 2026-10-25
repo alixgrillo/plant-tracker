@@ -6,6 +6,7 @@ export const careProfileSchema = z.object({
   waterMinDays: z.number().int().positive(),
   waterMaxDays: z.number().int().positive(),
   waterNotes: z.string(),
+  waterHow: z.string().default(""),
   healthSigns: z.string(),
 });
 export type CareProfile = z.infer<typeof careProfileSchema>;
@@ -43,6 +44,7 @@ export const careEditSchema = z
     waterMinDays: z.number().int().positive(),
     waterMaxDays: z.number().int().positive(),
     waterNotes: z.string(),
+    waterHow: z.string().default(""),
     healthSigns: z.string(),
   })
   .refine((v) => v.waterMinDays <= v.waterMaxDays, {
@@ -50,3 +52,5 @@ export const careEditSchema = z
     path: ["waterMinDays"],
   });
 export type CareEdit = z.infer<typeof careEditSchema>;
+
+

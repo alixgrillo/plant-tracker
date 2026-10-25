@@ -107,6 +107,7 @@ export function PlantDetailScreen({ route, navigation }: Props) {
             label="Watering"
             value={`Every ${c.water_min_days ?? "?"}-${c.water_max_days ?? "?"} days${c.water_notes ? `\n${c.water_notes}` : ""}`}
           />
+          <Field label="How to water" value={c.water_how} />
           <Field label="Healthy signs" value={c.health_signs} />
         </>
       ) : (
@@ -150,3 +151,4 @@ const s = StyleSheet.create({
   buttons: { marginTop: 24, gap: 10 },
   error: { margin: 24, color: "#c0392b" },
 });
+

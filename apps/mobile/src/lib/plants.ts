@@ -16,6 +16,7 @@ export interface PlantDetail {
     water_min_days: number | null;
     water_max_days: number | null;
     water_notes: string | null;
+    water_how: string | null;
     health_signs: string | null;
     source: "ai" | "manual";
   } | null;
@@ -52,6 +53,7 @@ export async function saveCare(plantId: string, care: CareEdit, source: "ai" | "
     water_min_days: care.waterMinDays,
     water_max_days: care.waterMaxDays,
     water_notes: care.waterNotes,
+    water_how: care.waterHow,
     health_signs: care.healthSigns,
     source,
   });
@@ -77,3 +79,5 @@ export async function markWatered(plantId: string) {
   const { error } = await supabase.from("watering_events").insert({ plant_id: plantId });
   if (error) throw error;
 }
+
+

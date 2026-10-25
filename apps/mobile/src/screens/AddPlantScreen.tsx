@@ -74,6 +74,7 @@ export function AddPlantScreen({ navigation }: NativeStackScreenProps<RootStackP
           water_min_days: c.waterMinDays,
           water_max_days: c.waterMaxDays,
           water_notes: c.waterNotes,
+          water_how: c.waterHow,
           health_signs: c.healthSigns,
           source: "ai",
         });
@@ -102,6 +103,7 @@ export function AddPlantScreen({ navigation }: NativeStackScreenProps<RootStackP
           <Text style={s.label}>Light</Text><Text>{result.care.light}</Text>
           <Text style={s.label}>Water every {result.care.waterMinDays}-{result.care.waterMaxDays} days</Text>
           <Text>{result.care.waterNotes}</Text>
+          {result.care.waterHow ? <><Text style={s.label}>How to water</Text><Text>{result.care.waterHow}</Text></> : null}
           <Text style={s.label}>Healthy signs</Text><Text>{result.care.healthSigns}</Text>
         </>
       )}
@@ -119,5 +121,7 @@ const s = StyleSheet.create({
   i: { fontStyle: "italic" },
   label: { fontWeight: "600", marginTop: 8 },
 });
+
+
 
 
