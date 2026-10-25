@@ -7,3 +7,13 @@ describe("identifyRequestSchema", () => {
     expect(identifyRequestSchema.safeParse({ name: "Pothos" }).success).toBe(true);
   });
 });
+
+import { careEditSchema } from "./index.js";
+
+describe("careEditSchema", () => {
+  const base = { description: "", light: "", waterNotes: "", healthSigns: "" };
+  it("requires min <= max", () => {
+    expect(careEditSchema.safeParse({ ...base, waterMinDays: 10, waterMaxDays: 5 }).success).toBe(false);
+    expect(careEditSchema.safeParse({ ...base, waterMinDays: 5, waterMaxDays: 10 }).success).toBe(true);
+  });
+});

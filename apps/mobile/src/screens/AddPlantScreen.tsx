@@ -6,8 +6,10 @@ import { decode } from "base64-arraybuffer";
 import type { IdentifyResult } from "@plant-tracker/shared";
 import { identifyPlant } from "../lib/api";
 import { supabase } from "../lib/supabase";
+import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import type { RootStackParamList } from "../navigation";
 
-export function AddPlantScreen({ onDone }: { onDone: () => void }) {
+export function AddPlantScreen({ navigation }: NativeStackScreenProps<RootStackParamList, "AddPlant">) {
   const [nickname, setNickname] = useState("");
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [photoPath, setPhotoPath] = useState<string | null>(null);
@@ -15,11 +17,18 @@ export function AddPlantScreen({ onDone }: { onDone: () => void }) {
   const [busy, setBusy] = useState(false);
 
   const pick = async (camera: boolean) => {
-    const launch = camera ? ImagePicker.launchCameraAsync : ImagePicker.launchImageLibraryAsync;
-    const picked = await launch({ mediaTypes: ["images"], quality: 1 });
-    if (picked.canceled) return;
     setBusy(true);
     try {
+      const perm = camera
+        ? await ImagePicker.requestCameraPermissionsAsync()
+        : await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!perm.granted) {
+        Alert.alert("Permission needed", "Please allow access in your phone settings.");
+        return;
+      }
+      const launch = camera ? ImagePicker.launchCameraAsync : ImagePicker.launchImageLibraryAsync;
+      const picked = await launch({ mediaTypes: ["images"], quality: 1 });
+      if (picked.canceled) return;
       const small = await ImageManipulator.manipulateAsync(
         picked.assets[0].uri,
         [{ resize: { width: 1024 } }],
@@ -70,7 +79,7 @@ export function AddPlantScreen({ onDone }: { onDone: () => void }) {
         });
         if (e2) throw e2;
       }
-      onDone();
+      navigation.goBack();
     } catch (e) {
       Alert.alert("Save failed", String(e instanceof Error ? e.message : e));
     } finally {
@@ -97,16 +106,18 @@ export function AddPlantScreen({ onDone }: { onDone: () => void }) {
         </>
       )}
       <Button title="Save plant" onPress={save} disabled={busy} />
-      <Button title="Cancel" color="#888" onPress={onDone} />
+      <Button title="Cancel" color="#888" onPress={() => navigation.goBack()} />
     </ScrollView>
   );
 }
 
 const s = StyleSheet.create({
-  container: { padding: 16, paddingTop: 56, gap: 8 },
+  container: { padding: 16, gap: 8 },
   input: { borderWidth: 1, borderColor: "#ccc", borderRadius: 6, padding: 10 },
   photo: { width: "100%", height: 240, borderRadius: 8 },
   h: { fontSize: 20, fontWeight: "600" },
   i: { fontStyle: "italic" },
   label: { fontWeight: "600", marginTop: 8 },
 });
+
+

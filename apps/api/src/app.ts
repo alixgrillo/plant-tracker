@@ -40,7 +40,14 @@ export async function buildApp(deps: Deps) {
         return await deps.identifier.identify({ imageUrl, name: parsed.data.name });
       } catch (err) {
         req.log.error(err);
-        return reply.code(502).send({ error: "identification failed" });
+        const status = (err as { status?: number }).status;
+        const message =
+          status === 429
+            ? "AI service is out of credits or rate limited. Please try again later."
+            : status === 401
+              ? "AI service is misconfigured."
+              : "Identification failed. Please try again.";
+        return reply.code(502).send({ error: message });
       }
     },
   );

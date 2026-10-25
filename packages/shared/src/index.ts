@@ -35,3 +35,18 @@ export const plantInputSchema = z.object({
   notes: z.string().nullable(),
 });
 export type PlantInput = z.infer<typeof plantInputSchema>;
+
+export const careEditSchema = z
+  .object({
+    description: z.string(),
+    light: z.string(),
+    waterMinDays: z.number().int().positive(),
+    waterMaxDays: z.number().int().positive(),
+    waterNotes: z.string(),
+    healthSigns: z.string(),
+  })
+  .refine((v) => v.waterMinDays <= v.waterMaxDays, {
+    message: "Minimum days must not exceed maximum days",
+    path: ["waterMinDays"],
+  });
+export type CareEdit = z.infer<typeof careEditSchema>;

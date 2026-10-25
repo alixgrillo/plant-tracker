@@ -11,6 +11,9 @@ export async function identifyPlant(input: { imagePath?: string; name?: string }
     },
     body: JSON.stringify(input),
   });
-  if (!res.ok) throw new Error(`Identify failed (${res.status})`);
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(typeof body?.error === "string" ? body.error : `Identify failed (${res.status})`);
+  }
   return identifyResultSchema.parse(await res.json());
 }

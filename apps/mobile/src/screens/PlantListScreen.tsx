@@ -1,5 +1,8 @@
-import { useCallback, useEffect, useState } from "react";
-import { Button, FlatList, StyleSheet, Text, View } from "react-native";
+import { useCallback, useState } from "react";
+import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
+import { useFocusEffect } from "@react-navigation/native";
+import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import type { RootStackParamList } from "../navigation";
 import { supabase } from "../lib/supabase";
 
 interface Row {
@@ -8,20 +11,18 @@ interface Row {
   species_common: string | null;
 }
 
-export function PlantListScreen({ onAdd }: { onAdd: () => void }) {
+export function PlantListScreen({ navigation }: NativeStackScreenProps<RootStackParamList, "PlantList">) {
   const [plants, setPlants] = useState<Row[]>([]);
 
-  const load = useCallback(async () => {
-    const { data } = await supabase
-      .from("plants")
-      .select("id, nickname, species_common")
-      .order("created_at", { ascending: false });
-    setPlants(data ?? []);
-  }, []);
-
-  useEffect(() => {
-    load();
-  }, [load]);
+  useFocusEffect(
+    useCallback(() => {
+      supabase
+        .from("plants")
+        .select("id, nickname, species_common")
+        .order("created_at", { ascending: false })
+        .then(({ data }) => setPlants(data ?? []));
+    }, []),
+  );
 
   return (
     <View style={s.container}>
@@ -30,22 +31,23 @@ export function PlantListScreen({ onAdd }: { onAdd: () => void }) {
         keyExtractor={(p) => p.id}
         ListEmptyComponent={<Text style={s.empty}>No plants yet. Add your first one!</Text>}
         renderItem={({ item }) => (
-          <View style={s.row}>
+          <Pressable
+            style={({ pressed }) => [s.row, pressed && { backgroundColor: "#f0f0f0" }]}
+            onPress={() => navigation.navigate("PlantDetail", { plantId: item.id })}
+          >
             <Text style={s.name}>{item.nickname}</Text>
-            {item.species_common ? <Text>{item.species_common}</Text> : null}
-          </View>
+            {item.species_common ? <Text style={s.species}>{item.species_common}</Text> : null}
+          </Pressable>
         )}
       />
-      <Button title="Add plant" onPress={onAdd} />
-      <View style={{ height: 8 }} />
-      <Button title="Sign out" color="#888" onPress={() => supabase.auth.signOut()} />
     </View>
   );
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1, padding: 16, paddingTop: 56 },
+  container: { flex: 1, backgroundColor: "#fff" },
   empty: { textAlign: "center", marginTop: 40, color: "#666" },
-  row: { paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: "#ccc" },
-  name: { fontSize: 18, fontWeight: "500" },
+  row: { paddingVertical: 14, paddingHorizontal: 16, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: "#ccc" },
+  name: { fontSize: 18, fontWeight: "500", color: "#111" },
+  species: { color: "#444" },
 });
