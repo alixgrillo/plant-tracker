@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
-import { useFocusEffect } from "@react-navigation/native";
-import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../navigation";
 import { supabase } from "../lib/supabase";
 
@@ -11,7 +11,8 @@ interface Row {
   species_common: string | null;
 }
 
-export function PlantListScreen({ navigation }: NativeStackScreenProps<RootStackParamList, "PlantList">) {
+export function PlantListScreen() {
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [plants, setPlants] = useState<Row[]>([]);
 
   useFocusEffect(

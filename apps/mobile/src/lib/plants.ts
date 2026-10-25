@@ -1,4 +1,4 @@
-import type { CareEdit, IdentifyResult } from "@plant-tracker/shared";
+import { nextWaterDue, type CareEdit, type IdentifyResult } from "@plant-tracker/shared";
 import { supabase } from "./supabase";
 
 export interface PlantDetail {
@@ -9,6 +9,7 @@ export interface PlantDetail {
   photo_path: string | null;
   location: string | null;
   notes: string | null;
+  water_interval_override: number | null;
   created_at: string;
   care: {
     description: string | null;
@@ -19,6 +20,8 @@ export interface PlantDetail {
     water_how: string | null;
     health_signs: string | null;
     source: "ai" | "manual";
+    ai_confidence: "low" | "medium" | "high" | null;
+    ai_model: string | null;
   } | null;
   lastWatered: string | null;
 }
@@ -39,13 +42,23 @@ export async function getPlant(id: string): Promise<PlantDetail> {
 
 export async function updatePlant(
   id: string,
-  fields: { nickname: string; location: string | null; notes: string | null },
+  fields: {
+    nickname: string;
+    location: string | null;
+    notes: string | null;
+    water_interval_override: number | null;
+  },
 ) {
   const { error } = await supabase.from("plants").update(fields).eq("id", id);
   if (error) throw error;
 }
 
-export async function saveCare(plantId: string, care: CareEdit, source: "ai" | "manual") {
+export async function saveCare(
+  plantId: string,
+  care: CareEdit,
+  source: "ai" | "manual",
+  ai?: { confidence: "low" | "medium" | "high"; model?: string },
+) {
   const { error } = await supabase.from("care_profiles").upsert({
     plant_id: plantId,
     description: care.description,
@@ -56,6 +69,8 @@ export async function saveCare(plantId: string, care: CareEdit, source: "ai" | "
     water_how: care.waterHow,
     health_signs: care.healthSigns,
     source,
+    ai_confidence: source === "ai" ? (ai?.confidence ?? null) : null,
+    ai_model: source === "ai" ? (ai?.model ?? null) : null,
   });
   if (error) throw error;
 }
@@ -66,7 +81,7 @@ export async function applyIdentification(plantId: string, r: IdentifyResult) {
     .update({ species_common: r.commonName, species_scientific: r.scientificName })
     .eq("id", plantId);
   if (error) throw error;
-  await saveCare(plantId, r.care, "ai");
+  await saveCare(plantId, r.care, "ai", { confidence: r.confidence, model: r.model });
 }
 
 export async function deletePlant(id: string, photoPath: string | null) {
@@ -81,3 +96,39 @@ export async function markWatered(plantId: string) {
 }
 
 
+
+
+
+
+
+
+
+
+export interface ScheduleItem {
+  id: string;
+  nickname: string;
+  species_common: string | null;
+  due: Date | null;
+}
+
+export async function listSchedule(): Promise<ScheduleItem[]> {
+  const { data, error } = await supabase
+    .from("plants")
+    .select(
+      "id, nickname, species_common, created_at, water_interval_override, care_profiles(water_min_days, water_max_days), watering_events(watered_at)",
+    )
+    .order("watered_at", { referencedTable: "watering_events", ascending: false })
+    .limit(1, { referencedTable: "watering_events" });
+  if (error) throw error;
+  return (data ?? []).map((p) => {
+    const cp = Array.isArray(p.care_profiles) ? p.care_profiles[0] : p.care_profiles;
+    const last = p.watering_events?.[0]?.watered_at;
+    const due = nextWaterDue(
+      last ? new Date(last) : null,
+      new Date(p.created_at),
+      cp ? { waterMinDays: cp.water_min_days, waterMaxDays: cp.water_max_days } : null,
+      p.water_interval_override,
+    );
+    return { id: p.id, nickname: p.nickname, species_common: p.species_common, due };
+  });
+}

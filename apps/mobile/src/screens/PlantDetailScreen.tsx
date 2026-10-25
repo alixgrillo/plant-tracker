@@ -4,6 +4,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../navigation";
 import { identifyPlant } from "../lib/api";
+import { nextWaterDue, wateringIntervalDays } from "@plant-tracker/shared";
 import { applyIdentification, deletePlant, getPlant, markWatered, type PlantDetail } from "../lib/plants";
 
 type Props = NativeStackScreenProps<RootStackParamList, "PlantDetail">;
@@ -89,11 +90,25 @@ export function PlantDetailScreen({ route, navigation }: Props) {
   if (!plant) return <ActivityIndicator style={{ marginTop: 40 }} />;
 
   const c = plant.care;
+  const careInput = c ? { waterMinDays: c.water_min_days, waterMaxDays: c.water_max_days } : null;
+  const interval = wateringIntervalDays(careInput, plant.water_interval_override);
+  const due = nextWaterDue(
+    plant.lastWatered ? new Date(plant.lastWatered) : null,
+    new Date(plant.created_at),
+    careInput,
+    plant.water_interval_override,
+  );
+  const unsure = c?.source === "ai" && c.ai_confidence && c.ai_confidence !== "high";
   return (
     <ScrollView contentContainerStyle={s.container}>
       <Text style={s.title}>{plant.nickname}</Text>
       {plant.species_common ? <Text style={s.species}>{plant.species_common}</Text> : null}
       {plant.species_scientific ? <Text style={s.italic}>{plant.species_scientific}</Text> : null}
+      {unsure ? (
+        <Text style={s.warn}>
+          {c!.ai_confidence} confidence - double-check this species. Tap "Wrong plant?" below if it looks off.
+        </Text>
+      ) : null}
       <Text style={s.muted}>Added {new Date(plant.created_at).toLocaleDateString()}</Text>
       {plant.location ? <Field label="Location" value={plant.location} /> : null}
       {plant.notes ? <Field label="Notes" value={plant.notes} /> : null}
@@ -115,6 +130,10 @@ export function PlantDetailScreen({ route, navigation }: Props) {
       )}
 
       <Field
+        label="Next watering"
+        value={due ? `${due.toLocaleDateString()} (every ${interval} days${plant.water_interval_override ? ", your setting" : ""})` : "Add care info or a watering interval to see this"}
+      />
+      <Field
         label="Last watered"
         value={plant.lastWatered ? new Date(plant.lastWatered).toLocaleString() : "Not recorded yet"}
       />
@@ -123,6 +142,7 @@ export function PlantDetailScreen({ route, navigation }: Props) {
         <Button title="Mark as watered" onPress={watered} disabled={busy} />
         <Button title="Edit" onPress={() => navigation.navigate("EditPlant", { plantId })} disabled={busy} />
         <Button title="Re-identify with AI" onPress={reidentify} disabled={busy} />
+        <Button title="Wrong plant?" color="#b9770e" onPress={() => navigation.navigate("WrongPlant", { plantId })} disabled={busy} />
         <Button title="Delete plant" color="#c0392b" onPress={remove} disabled={busy} />
       </View>
     </ScrollView>
@@ -144,6 +164,7 @@ const s = StyleSheet.create({
   title: { fontSize: 26, fontWeight: "600", color: "#111" },
   species: { fontSize: 18, color: "#222", marginTop: 4 },
   italic: { fontStyle: "italic", color: "#444" },
+  warn: { color: "#b9770e", marginTop: 8, fontWeight: "500" },
   muted: { color: "#666", marginTop: 6 },
   section: { fontSize: 18, fontWeight: "600", marginTop: 24, color: "#111" },
   label: { fontWeight: "600", color: "#333" },
@@ -151,4 +172,10 @@ const s = StyleSheet.create({
   buttons: { marginTop: 24, gap: 10 },
   error: { margin: 24, color: "#c0392b" },
 });
+
+
+
+
+
+
 

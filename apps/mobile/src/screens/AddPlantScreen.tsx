@@ -77,6 +77,8 @@ export function AddPlantScreen({ navigation }: NativeStackScreenProps<RootStackP
           water_how: c.waterHow,
           health_signs: c.healthSigns,
           source: "ai",
+          ai_confidence: result.confidence,
+          ai_model: result.model ?? null,
         });
         if (e2) throw e2;
       }
@@ -121,6 +123,7 @@ const s = StyleSheet.create({
   i: { fontStyle: "italic" },
   label: { fontWeight: "600", marginTop: 8 },
 });
+
 
 
 

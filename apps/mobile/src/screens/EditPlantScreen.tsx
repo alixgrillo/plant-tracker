@@ -13,7 +13,7 @@ export function EditPlantScreen({ route, navigation }: Props) {
   const [saving, setSaving] = useState(false);
   const [f, setF] = useState({
     nickname: "", location: "", notes: "", description: "", light: "",
-    min: "", max: "", waterNotes: "", waterHow: "", healthSigns: "",
+    interval: "", min: "", max: "", waterNotes: "", waterHow: "", healthSigns: "",
   });
   const [hadCare, setHadCare] = useState(false);
   const set = (k: keyof typeof f) => (v: string) => setF((p) => ({ ...p, [k]: v }));
@@ -28,6 +28,7 @@ export function EditPlantScreen({ route, navigation }: Props) {
           notes: p.notes ?? "",
           description: p.care?.description ?? "",
           light: p.care?.light ?? "",
+          interval: p.water_interval_override?.toString() ?? "",
           min: p.care?.water_min_days?.toString() ?? "",
           max: p.care?.water_max_days?.toString() ?? "",
           waterNotes: p.care?.water_notes ?? "",
@@ -58,12 +59,17 @@ export function EditPlantScreen({ route, navigation }: Props) {
       }
       care = parsed.data;
     }
+    const interval = f.interval.trim() ? Number(f.interval) : null;
+    if (interval !== null && (!Number.isInteger(interval) || interval < 1)) {
+      return Alert.alert("Watering interval must be a whole number of days");
+    }
     setSaving(true);
     try {
       await updatePlant(plantId, {
         nickname: f.nickname.trim(),
         location: f.location.trim() || null,
         notes: f.notes.trim() || null,
+        water_interval_override: interval,
       });
       if (care) await saveCare(plantId, care, "manual");
       navigation.goBack();
@@ -81,6 +87,7 @@ export function EditPlantScreen({ route, navigation }: Props) {
       <Label t="Name" /><TextInput style={s.input} value={f.nickname} onChangeText={set("nickname")} />
       <Label t="Location" /><TextInput style={s.input} value={f.location} onChangeText={set("location")} placeholder="e.g. Kitchen window" placeholderTextColor="#888" />
       <Label t="Notes" /><TextInput style={[s.input, s.multi]} multiline value={f.notes} onChangeText={set("notes")} />
+      <Label t="Watering interval override (days, optional)" /><TextInput style={s.input} keyboardType="number-pad" value={f.interval} onChangeText={set("interval")} placeholder="Leave blank to use the AI range" placeholderTextColor="#888" />
       <Text style={s.section}>Care info</Text>
       <Label t="About" /><TextInput style={[s.input, s.multi]} multiline value={f.description} onChangeText={set("description")} />
       <Label t="Light" /><TextInput style={[s.input, s.multi]} multiline value={f.light} onChangeText={set("light")} />
@@ -103,6 +110,11 @@ const s = StyleSheet.create({
   input: { borderWidth: 1, borderColor: "#ccc", borderRadius: 6, padding: 10, color: "#111" },
   multi: { minHeight: 64, textAlignVertical: "top" },
 });
+
+
+
+
+
 
 
 
