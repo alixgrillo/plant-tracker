@@ -9,6 +9,7 @@
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true,
+      "infoPlist": { "ITSAppUsesNonExemptEncryption": false },
       "bundleIdentifier": "com.alixgrillo.planttracker"
     },
     "android": {
