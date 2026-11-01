@@ -7,6 +7,11 @@ export const careProfileSchema = z.object({
   waterMaxDays: z.number().int().positive(),
   waterNotes: z.string(),
   waterHow: z.string().default(""),
+  fertilizerEveryDays: z.number().int().positive().nullable().default(null),
+  fertilizerNotes: z.string().default(""),
+  fertilizerType: z.string().default(""),
+  selfWateringPotRecommendation: z.enum(["recommended", "not_recommended", "depends"]).default("depends"),
+  selfWateringPotNotes: z.string().default(""),
   healthSigns: z.string(),
 });
 export type CareProfile = z.infer<typeof careProfileSchema>;
@@ -48,6 +53,11 @@ export const careEditSchema = z
     waterMaxDays: z.number().int().positive(),
     waterNotes: z.string(),
     waterHow: z.string().default(""),
+    fertilizerEveryDays: z.number().int().positive().nullable().default(null),
+    fertilizerNotes: z.string().default(""),
+    fertilizerType: z.string().default(""),
+    selfWateringPotRecommendation: z.enum(["recommended", "not_recommended", "depends"]).default("depends"),
+    selfWateringPotNotes: z.string().default(""),
     healthSigns: z.string(),
   })
   .refine((v) => v.waterMinDays <= v.waterMaxDays, {
@@ -96,8 +106,77 @@ export function nextWaterDue(
   return new Date(base.getTime() + interval * DAY_MS);
 }
 
+export function nextFertilizerDue(
+  lastFertilized: Date | null,
+  createdAt: Date,
+  fertilizerEveryDays: number | null,
+): Date | null {
+  if (fertilizerEveryDays == null || fertilizerEveryDays <= 0) return null;
+  const base = lastFertilized ?? createdAt;
+  return new Date(base.getTime() + fertilizerEveryDays * DAY_MS);
+}
+
 export function toDateKey(d: Date): string {
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
   return `${d.getFullYear()}-${m}-${day}`;
+}
+
+export type LightCategory = "low" | "medium" | "bright" | "direct" | "unknown";
+
+// Care profiles store light as free text, so bucket it by keyword.
+export function classifyLight(text: string | null | undefined): LightCategory {
+  const t = (text ?? "").toLowerCase();
+  if (!t.trim()) return "unknown";
+  if (/full sun|\bdirect\b/.test(t) && !/indirect/.test(t)) return "direct";
+  if (/\blow\b|shade/.test(t)) return "low";
+  if (/bright|indirect/.test(t)) return "bright";
+  if (/medium|moderate|partial|filtered/.test(t)) return "medium";
+  return "unknown";
+}
+
+export interface SummaryPlant {
+  light: string | null;
+  fertilizerType: string | null;
+}
+
+export interface SummaryTask {
+  plantId: string;
+  kind: "water" | "fertilizer";
+  due: Date | null;
+}
+
+export interface PlantSummary {
+  total: number;
+  byLight: Record<LightCategory, number>;
+  fertilizers: { type: string; count: number }[];
+  overdue: { plants: number; watering: number; fertilizing: number };
+}
+
+export function summarizePlants(plants: SummaryPlant[], tasks: SummaryTask[], now: Date): PlantSummary {
+  const byLight: Record<LightCategory, number> = { low: 0, medium: 0, bright: 0, direct: 0, unknown: 0 };
+  const types = new Map<string, { type: string; count: number }>();
+  for (const p of plants) {
+    byLight[classifyLight(p.light)]++;
+    const type = p.fertilizerType?.trim();
+    if (type) {
+      const key = type.toLowerCase();
+      const entry = types.get(key) ?? { type, count: 0 };
+      entry.count++;
+      types.set(key, entry);
+    }
+  }
+
+  const today = toDateKey(now);
+  const overdueTasks = tasks.filter((t) => t.due && toDateKey(t.due) < today);
+  return {
+    total: plants.length,
+    byLight,
+    fertilizers: [...types.values()].sort((a, b) => b.count - a.count || a.type.localeCompare(b.type)),
+    overdue: {
+      plants: new Set(overdueTasks.map((t) => t.plantId)).size,
+      watering: overdueTasks.filter((t) => t.kind === "water").length,
+      fertilizing: overdueTasks.filter((t) => t.kind === "fertilizer").length,
+    },
+  };
 }

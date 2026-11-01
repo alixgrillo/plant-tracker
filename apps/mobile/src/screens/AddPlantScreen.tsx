@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ActivityIndicator, Alert, Button, Image, ScrollView, StyleSheet, Text, TextInput } from "react-native";
+import { ActivityIndicator, Alert, Image, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import * as ImageManipulator from "expo-image-manipulator";
 import { decode } from "base64-arraybuffer";
@@ -8,6 +8,7 @@ import { identifyPlant } from "../lib/api";
 import { supabase } from "../lib/supabase";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../navigation";
+import { AppButton, Card, Chip, colors } from "../theme";
 
 export function AddPlantScreen({ navigation }: NativeStackScreenProps<RootStackParamList, "AddPlant">) {
   const [nickname, setNickname] = useState("");
@@ -75,6 +76,11 @@ export function AddPlantScreen({ navigation }: NativeStackScreenProps<RootStackP
           water_max_days: c.waterMaxDays,
           water_notes: c.waterNotes,
           water_how: c.waterHow,
+          fertilizer_every_days: c.fertilizerEveryDays,
+          fertilizer_notes: c.fertilizerNotes,
+          fertilizer_type: c.fertilizerType,
+          self_watering_pot_recommendation: c.selfWateringPotRecommendation,
+          self_watering_pot_notes: c.selfWateringPotNotes,
           health_signs: c.healthSigns,
           source: "ai",
           ai_confidence: result.confidence,
@@ -92,39 +98,59 @@ export function AddPlantScreen({ navigation }: NativeStackScreenProps<RootStackP
 
   return (
     <ScrollView contentContainerStyle={s.container}>
-      <TextInput style={s.input} placeholder="Plant name (e.g. Kitchen pothos)" value={nickname} onChangeText={setNickname} />
-      <Button title="Take photo" onPress={() => pick(true)} />
-      <Button title="Choose from library" onPress={() => pick(false)} />
+      <TextInput style={s.input} placeholder="Plant name (e.g. Kitchen pothos)" placeholderTextColor={colors.muted} value={nickname} onChangeText={setNickname} />
+      <View style={s.row}>
+        <AppButton title="📷 Take photo" onPress={() => pick(true)} style={s.flex} />
+        <AppButton title="🖼️ Library" variant="secondary" onPress={() => pick(false)} style={s.flex} />
+      </View>
       {busy && <ActivityIndicator style={{ margin: 16 }} />}
       {photoUri && <Image source={{ uri: photoUri }} style={s.photo} />}
       {result && (
-        <>
-          <Text style={s.h}>{result.commonName} ({result.confidence} confidence)</Text>
+        <Card style={{ gap: 4 }}>
+          <Text style={s.h}>{result.commonName}</Text>
+          <Chip label={`${result.confidence} confidence`} tone={result.confidence === "high" ? "green" : "amber"} />
           <Text style={s.i}>{result.scientificName}</Text>
-          <Text>{result.care.description}</Text>
-          <Text style={s.label}>Light</Text><Text>{result.care.light}</Text>
-          <Text style={s.label}>Water every {result.care.waterMinDays}-{result.care.waterMaxDays} days</Text>
-          <Text>{result.care.waterNotes}</Text>
-          {result.care.waterHow ? <><Text style={s.label}>How to water</Text><Text>{result.care.waterHow}</Text></> : null}
-          <Text style={s.label}>Healthy signs</Text><Text>{result.care.healthSigns}</Text>
-        </>
+          <Text style={s.body}>{result.care.description}</Text>
+          <Text style={s.label}>☀️ Light</Text><Text style={s.body}>{result.care.light}</Text>
+          <Text style={s.label}>💧 Water every {result.care.waterMinDays}-{result.care.waterMaxDays} days</Text>
+          <Text style={s.body}>{result.care.waterNotes}</Text>
+          {result.care.waterHow ? <><Text style={s.label}>🚿 How to water</Text><Text style={s.body}>{result.care.waterHow}</Text></> : null}
+          <Text style={s.label}>🌱 Fertilizer schedule</Text>
+          <Text style={s.body}>
+            {result.care.fertilizerType ? `${result.care.fertilizerType}\n` : ""}
+            {result.care.fertilizerEveryDays
+              ? `Every ${result.care.fertilizerEveryDays} days${result.care.fertilizerNotes ? ` — ${result.care.fertilizerNotes}` : ""}`
+              : result.care.fertilizerNotes || "No regular fertilizer schedule recommended"}
+          </Text>
+          <Text style={s.label}>🏺 Self-watering pot</Text>
+          <Text style={s.body}>
+            {result.care.selfWateringPotRecommendation === "not_recommended"
+              ? "Not recommended"
+              : result.care.selfWateringPotRecommendation === "recommended"
+                ? "Recommended"
+                : "Depends on setup"}
+            {result.care.selfWateringPotNotes ? ` — ${result.care.selfWateringPotNotes}` : ""}
+          </Text>
+          <Text style={s.label}>💚 Healthy signs</Text><Text style={s.body}>{result.care.healthSigns}</Text>
+        </Card>
       )}
-      <Button title="Save plant" onPress={save} disabled={busy} />
-      <Button title="Cancel" color="#888" onPress={() => navigation.goBack()} />
+      <AppButton title="Save plant" onPress={save} disabled={busy} />
+      <AppButton title="Cancel" variant="secondary" onPress={() => navigation.goBack()} />
     </ScrollView>
   );
 }
 
 const s = StyleSheet.create({
-  container: { padding: 16, gap: 8 },
-  input: { borderWidth: 1, borderColor: "#ccc", borderRadius: 6, padding: 10 },
-  photo: { width: "100%", height: 240, borderRadius: 8 },
-  h: { fontSize: 20, fontWeight: "600" },
-  i: { fontStyle: "italic" },
-  label: { fontWeight: "600", marginTop: 8 },
+  container: { padding: 16, gap: 12, paddingBottom: 40 },
+  row: { flexDirection: "row", gap: 10 },
+  flex: { flex: 1 },
+  input: { borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 12, backgroundColor: colors.card, color: colors.text },
+  photo: { width: "100%", height: 240, borderRadius: 16 },
+  h: { fontSize: 22, fontWeight: "800", color: colors.text },
+  i: { fontStyle: "italic", color: colors.muted },
+  body: { color: colors.text, lineHeight: 21 },
+  label: { fontWeight: "700", color: colors.primaryDark, marginTop: 10 },
 });
-
-
 
 
 

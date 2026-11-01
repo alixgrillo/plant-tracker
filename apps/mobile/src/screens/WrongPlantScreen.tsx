@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Alert, Button, ScrollView, StyleSheet, Text, TextInput } from "react-native";
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TextInput } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { IdentifyResult } from "@plant-tracker/shared";
 import type { RootStackParamList } from "../navigation";
+import { AppButton, colors } from "../theme";
 import { identifyPlant, sendFeedback } from "../lib/api";
 import { applyIdentification, getPlant, type PlantDetail } from "../lib/plants";
 
@@ -88,15 +89,15 @@ export function WrongPlantScreen({ route, navigation }: Props) {
       </Text>
 
       <Text style={s.label}>Try again</Text>
-      <Button title="Try a smarter check" onPress={smarterCheck} disabled={busy} />
+      <AppButton title="Try a smarter check" onPress={smarterCheck} disabled={busy} />
 
       <Text style={s.label}>Think you know what it is?</Text>
       <TextInput style={s.input} placeholder="e.g. Philodendron hederaceum" placeholderTextColor="#888" value={suggestion} onChangeText={setSuggestion} />
-      <Button title="Use my suggestion" onPress={useMySuggestion} disabled={busy} />
+      <AppButton title="Use my suggestion" variant="secondary" onPress={useMySuggestion} disabled={busy} />
 
       <Text style={s.label}>Note for the developer (optional)</Text>
       <TextInput style={[s.input, { minHeight: 64 }]} multiline value={note} onChangeText={setNote} />
-      <Button title="Send feedback only" color="#888" onPress={feedbackOnly} disabled={busy} />
+      <AppButton title="Send feedback only" variant="secondary" onPress={feedbackOnly} disabled={busy} />
 
       {busy && <ActivityIndicator style={{ margin: 12 }} />}
 
@@ -108,7 +109,7 @@ export function WrongPlantScreen({ route, navigation }: Props) {
           </Text>
           <Text style={s.italic}>{result.scientificName}</Text>
           <Text style={s.text}>{result.care.description}</Text>
-          <Button title="Apply this result" onPress={apply} disabled={busy} />
+          <AppButton title="Apply this result" onPress={apply} disabled={busy} />
         </>
       )}
     </ScrollView>
@@ -117,9 +118,9 @@ export function WrongPlantScreen({ route, navigation }: Props) {
 
 const s = StyleSheet.create({
   container: { padding: 16, paddingBottom: 40, gap: 8 },
-  h: { fontSize: 18, fontWeight: "600", color: "#111", marginTop: 12 },
-  label: { fontWeight: "600", color: "#333", marginTop: 12 },
-  text: { color: "#111" },
-  italic: { fontStyle: "italic", color: "#444" },
-  input: { borderWidth: 1, borderColor: "#ccc", borderRadius: 6, padding: 10, color: "#111" },
+  h: { fontSize: 20, fontWeight: "800", color: colors.text, marginTop: 12 },
+  label: { fontWeight: "700", color: colors.primaryDark, marginTop: 12 },
+  text: { color: colors.text },
+  italic: { fontStyle: "italic", color: colors.muted },
+  input: { borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 12, color: colors.text, backgroundColor: colors.card },
 });

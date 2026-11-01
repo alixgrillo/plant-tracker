@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Alert, Button, StyleSheet, Text, TextInput, View } from "react-native";
+import { Alert, StyleSheet, Text, TextInput, View } from "react-native";
 import { supabase } from "../lib/supabase";
+import { AppButton, Card, colors } from "../theme";
 
 export function AuthScreen() {
   const [email, setEmail] = useState("");
@@ -15,18 +16,24 @@ export function AuthScreen() {
 
   return (
     <View style={s.container}>
+      <Text style={s.emoji}>🪴</Text>
       <Text style={s.title}>Plant Tracker</Text>
-      <TextInput style={s.input} placeholder="Email" autoCapitalize="none" keyboardType="email-address" value={email} onChangeText={setEmail} />
-      <TextInput style={s.input} placeholder="Password" secureTextEntry value={password} onChangeText={setPassword} />
-      <Button title="Sign in" onPress={() => run("in")} />
-      <View style={{ height: 8 }} />
-      <Button title="Create account" onPress={() => run("up")} />
+      <Text style={s.tagline}>Know what your plants need, right when they need it.</Text>
+      <Card style={s.card}>
+        <TextInput style={s.input} placeholder="Email" placeholderTextColor={colors.muted} autoCapitalize="none" keyboardType="email-address" value={email} onChangeText={setEmail} />
+        <TextInput style={s.input} placeholder="Password" placeholderTextColor={colors.muted} secureTextEntry value={password} onChangeText={setPassword} />
+        <AppButton title="Sign in" onPress={() => run("in")} />
+        <AppButton title="Create account" variant="secondary" onPress={() => run("up")} />
+      </Card>
     </View>
   );
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1, justifyContent: "center", padding: 24 },
-  title: { fontSize: 28, fontWeight: "600", marginBottom: 24, textAlign: "center" },
-  input: { borderWidth: 1, borderColor: "#ccc", borderRadius: 6, padding: 10, marginBottom: 12 },
+  container: { flex: 1, justifyContent: "center", padding: 24, backgroundColor: colors.bg },
+  emoji: { fontSize: 64, textAlign: "center" },
+  title: { fontSize: 32, fontWeight: "800", color: colors.primaryDark, textAlign: "center" },
+  tagline: { color: colors.muted, textAlign: "center", marginTop: 4, marginBottom: 24 },
+  card: { gap: 12 },
+  input: { borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 12, color: colors.text, backgroundColor: colors.bg },
 });

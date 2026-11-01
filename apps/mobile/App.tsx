@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Appearance, Button } from "react-native";
+import { syncReminders } from "./src/lib/reminders";
+import { ActivityIndicator, AppState, Appearance, Text, View } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { NavigationContainer, DefaultTheme, useNavigation } from "@react-navigation/native";
 import { createNativeStackNavigator, type NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -10,35 +11,63 @@ import type { RootStackParamList, TabParamList } from "./src/navigation";
 import { AuthScreen } from "./src/screens/AuthScreen";
 import { PlantListScreen } from "./src/screens/PlantListScreen";
 import { CalendarScreen } from "./src/screens/CalendarScreen";
+import { SummaryScreen } from "./src/screens/SummaryScreen";
 import { AddPlantScreen } from "./src/screens/AddPlantScreen";
 import { PlantDetailScreen } from "./src/screens/PlantDetailScreen";
 import { EditPlantScreen } from "./src/screens/EditPlantScreen";
 import { WrongPlantScreen } from "./src/screens/WrongPlantScreen";
+import { AppButton, colors, headerOptions } from "./src/theme";
 
 Appearance.setColorScheme("light");
+
+const navTheme = {
+  ...DefaultTheme,
+  colors: { ...DefaultTheme.colors, background: colors.bg, primary: colors.primary, card: colors.bg, text: colors.text, border: colors.border },
+};
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tabs = createBottomTabNavigator<TabParamList>();
 
+const tabIcon = (emoji: string) => ({ focused }: { focused: boolean }) => (
+  <Text style={{ fontSize: 20, opacity: focused ? 1 : 0.5 }}>{emoji}</Text>
+);
+
 function AddButton() {
   const nav = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  return <Button title="Add" onPress={() => nav.navigate("AddPlant")} />;
+  return <AppButton small title="+ Add" onPress={() => nav.navigate("AddPlant")} />;
 }
 
 function MainTabs() {
   return (
-    <Tabs.Navigator screenOptions={{ tabBarActiveTintColor: "#2e8b57" }}>
+    <Tabs.Navigator
+      screenOptions={{
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.muted,
+        tabBarStyle: { backgroundColor: colors.card, borderTopColor: colors.border },
+        tabBarLabelStyle: { fontWeight: "600" },
+        headerStyle: { backgroundColor: colors.bg },
+        headerShadowVisible: false,
+        headerTitleStyle: { fontWeight: "700", color: colors.text },
+        sceneStyle: { backgroundColor: colors.bg },
+      }}
+    >
       <Tabs.Screen
         name="PlantList"
         component={PlantListScreen}
         options={{
           title: "My Plants",
           tabBarLabel: "Plants",
-          headerRight: () => <AddButton />,
-          headerLeft: () => <Button title="Sign out" color="#888" onPress={() => supabase.auth.signOut()} />,
+          tabBarIcon: tabIcon("🪴"),
+          headerRight: () => <View style={{ marginRight: 12 }}><AddButton /></View>,
+          headerLeft: () => (
+            <View style={{ marginLeft: 12 }}>
+              <AppButton small variant="secondary" title="Sign out" onPress={() => supabase.auth.signOut()} />
+            </View>
+          ),
         }}
       />
-      <Tabs.Screen name="Calendar" component={CalendarScreen} options={{ title: "Watering calendar" }} />
+      <Tabs.Screen name="Calendar" component={CalendarScreen} options={{ title: "Care calendar", tabBarLabel: "Calendar", tabBarIcon: tabIcon("📅") }} />
+      <Tabs.Screen name="Summary" component={SummaryScreen} options={{ title: "Summary", tabBarIcon: tabIcon("📊") }} />
     </Tabs.Navigator>
   );
 }
@@ -56,11 +85,19 @@ export default function App() {
     return () => data.subscription.unsubscribe();
   }, []);
 
+  useEffect(() => {
+    if (!session) return;
+    const run = () => void syncReminders().catch(() => undefined);
+    run();
+    const sub = AppState.addEventListener("change", (s) => s === "active" && run());
+    return () => sub.remove();
+  }, [session]);
+
   if (!ready) return <ActivityIndicator style={{ flex: 1 }} />;
 
   return (
-    <NavigationContainer theme={DefaultTheme}>
-      <Stack.Navigator>
+    <NavigationContainer theme={navTheme}>
+      <Stack.Navigator screenOptions={headerOptions}>
         {!session ? (
           <Stack.Screen name="Auth" component={AuthScreen} options={{ headerShown: false }} />
         ) : (

@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: plant-tracker-api
+    runtime: node
+    plan: free
+    buildCommand: npm install --include=dev
+    startCommand: npm run start:prod -w apps/api
+    healthCheckPath: /health
+    envVars:
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        value: gpt-4o-mini
+      - key: OPENAI_MODEL_HIGH
+        value: gpt-4o

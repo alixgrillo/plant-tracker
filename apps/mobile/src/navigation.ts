@@ -10,4 +10,5 @@ export type RootStackParamList = {
 export type TabParamList = {
   PlantList: undefined;
   Calendar: undefined;
+  Summary: undefined;
 };
