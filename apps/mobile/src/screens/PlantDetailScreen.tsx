@@ -177,25 +177,23 @@ export function PlantDetailScreen({ route, navigation }: Props) {
               Last: {plant.lastWatered ? new Date(plant.lastWatered).toLocaleDateString() : "not recorded"}
             </Text>
           </View>
-          {c?.fertilizer_every_days ? (
-            <View style={s.statusCol}>
-              <Text style={s.statusLabel}>🌱 Next fertilizing</Text>
-              <Text style={[s.statusValue, fertOverdue && { color: colors.danger }]}>
-                {fertilizerDue ? fertilizerDue.toLocaleDateString() : "—"}
-              </Text>
-              <Text style={s.statusSub}>every {c.fertilizer_every_days} days</Text>
-              <Text style={s.statusSub}>
-                Last: {plant.lastFertilized ? new Date(plant.lastFertilized).toLocaleDateString() : "not recorded"}
-              </Text>
-            </View>
-          ) : null}
+          <View style={s.statusCol}>
+            <Text style={s.statusLabel}>🌱 Next fertilizing</Text>
+            <Text style={[s.statusValue, fertOverdue && { color: colors.danger }]}>
+              {fertilizerDue ? fertilizerDue.toLocaleDateString() : "—"}
+            </Text>
+            <Text style={s.statusSub}>
+              {c?.fertilizer_every_days ? `every ${c.fertilizer_every_days} days` : "No schedule set"}
+            </Text>
+            <Text style={s.statusSub}>
+              Last: {plant.lastFertilized ? new Date(plant.lastFertilized).toLocaleDateString() : "not recorded"}
+            </Text>
+          </View>
         </Card>
 
         <View style={s.row}>
           <AppButton title="💧 Watered" onPress={watered} disabled={busy} style={s.flex} />
-          {c?.fertilizer_every_days ? (
-            <AppButton title="🌱 Fertilized" variant="secondary" onPress={fertilized} disabled={busy} style={s.flex} />
-          ) : null}
+          <AppButton title="🌱 Fertilized" variant="secondary" onPress={fertilized} disabled={busy} style={s.flex} />
         </View>
         {busy && <ActivityIndicator style={{ margin: 8 }} />}
 

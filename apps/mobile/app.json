@@ -3,13 +3,17 @@
     "name": "Plant Tracker",
     "slug": "plant-tracker",
     "version": "1.0.0",
-    "plugins": ["expo-notifications"],
+    "plugins": [
+      "expo-notifications"
+    ],
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true,
-      "infoPlist": { "ITSAppUsesNonExemptEncryption": false },
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      },
       "bundleIdentifier": "com.alixgrillo.planttracker"
     },
     "android": {
@@ -24,6 +28,11 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "b7565bc6-c698-4aa6-8cfa-7e22bcf7bcb0"
+      }
     }
   }
 }
