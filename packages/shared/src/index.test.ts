@@ -60,9 +60,9 @@ describe("summarizePlants", () => {
   it("counts plants, light, fertilizer types and overdue tasks", () => {
     const s = summarizePlants(
       [
-        { light: "Bright indirect", fertilizerType: "Balanced liquid" },
-        { light: "Low light", fertilizerType: " balanced liquid " },
-        { light: null, fertilizerType: "" },
+        { id: "a", nickname: "Zoe", light: "Bright indirect", fertilizerType: "Balanced liquid" },
+        { id: "b", nickname: "Ada", light: "Low light", fertilizerType: " balanced liquid " },
+        { id: "c", nickname: "Fern", light: null, fertilizerType: "" },
       ],
       [
         { plantId: "a", kind: "water", due: day(8) },
@@ -75,8 +75,28 @@ describe("summarizePlants", () => {
     );
     expect(s.total).toBe(3);
     expect(s.byLight).toEqual({ low: 1, medium: 0, bright: 1, direct: 0, unknown: 1 });
-    expect(s.fertilizers).toEqual([{ type: "Balanced liquid", count: 2 }]);
+    expect(s.fertilizers).toEqual([{
+      type: "Balanced liquid",
+      count: 2,
+      plants: [
+        { id: "b", nickname: "Ada", light: "Low light", fertilizerType: " balanced liquid " },
+        { id: "a", nickname: "Zoe", light: "Bright indirect", fertilizerType: "Balanced liquid" },
+      ],
+    }]);
+    expect(s.plantsByLight.bright.map((p) => p.id)).toEqual(["a"]);
+    expect(s.plantsByLight.low.map((p) => p.id)).toEqual(["b"]);
+    expect(s.plantsByLight.unknown.map((p) => p.id)).toEqual(["c"]);
     expect(s.overdue).toEqual({ plants: 1, watering: 1, fertilizing: 1 });
+  });
+
+  it("keeps duplicate nicknames as separate plants in their groups", () => {
+    const summary = summarizePlants([
+      { id: "b", nickname: "Fern", light: "low", fertilizerType: "Feed" },
+      { id: "a", nickname: "Fern", light: "low", fertilizerType: "feed" },
+    ], [], now);
+    expect(summary.byLight.low).toBe(2);
+    expect(summary.plantsByLight.low.map((p) => p.id)).toEqual(["a", "b"]);
+    expect(summary.fertilizers[0].plants.map((p) => p.id)).toEqual(["a", "b"]);
   });
 });
 
@@ -124,5 +144,24 @@ describe("nextWaterDue", () => {
   });
   it("formats local date keys", () => {
     expect(toDateKey(new Date(2026, 0, 5))).toBe("2026-01-05");
+  });
+});
+
+describe("care dates across daylight saving changes", () => {
+  it("adds calendar days rather than fixed 24-hour periods", () => {
+    const previousTimezone = process.env.TZ;
+    process.env.TZ = "America/New_York";
+    try {
+      const fall = new Date(2026, 9, 31, 23, 30);
+      const spring = new Date(2026, 2, 7, 23, 30);
+      expect(toDateKey(nextWaterDue(fall, fall, { waterMinDays: 1, waterMaxDays: 1 }, null)!)).toBe("2026-11-01");
+      expect(toDateKey(nextFertilizerDue(fall, fall, 1)!)).toBe("2026-11-01");
+      expect(toDateKey(nextWaterDue(spring, spring, null, 1)!)).toBe("2026-03-08");
+      expect(toDateKey(nextFertilizerDue(spring, spring, 1)!)).toBe("2026-03-08");
+      expect(fall.getDate()).toBe(31);
+    } finally {
+      if (previousTimezone === undefined) delete process.env.TZ;
+      else process.env.TZ = previousTimezone;
+    }
   });
 });

@@ -16,12 +16,31 @@ export const careProfileSchema = z.object({
 });
 export type CareProfile = z.infer<typeof careProfileSchema>;
 
+export const alternativeSchema = z.object({
+  commonName: z.string().min(1).max(200),
+  scientificName: z.string().min(1).max(100),
+  photo: z.object({
+    url: z.string().url(),
+    attribution: z.string(),
+    sourceUrl: z.string().url(),
+    licenseUrl: z.string().url(),
+  }).optional(),
+});
+export type PlantAlternative = z.infer<typeof alternativeSchema>;
+
 export const identifyResultSchema = z.object({
   commonName: z.string(),
   scientificName: z.string(),
   confidence: z.enum(["low", "medium", "high"]),
   care: careProfileSchema,
   model: z.string().optional(),
+  alternatives: z.array(alternativeSchema).max(3).optional(),
+  usda: z.discriminatedUnion("status", [
+    z.object({ status: z.literal("match"), acceptedName: z.string() }),
+    z.object({ status: z.literal("synonym"), acceptedName: z.string() }),
+    z.object({ status: z.literal("not_found") }),
+    z.object({ status: z.literal("unavailable") }),
+  ]).optional(),
 });
 export type IdentifyResult = z.infer<typeof identifyResultSchema>;
 
@@ -31,8 +50,9 @@ export const identifyRequestSchema = z
     name: z.string().min(1).max(100).optional(),
     quality: z.enum(["standard", "high"]).default("standard"),
     notThis: z.string().max(100).optional(),
+    selectedScientificName: z.string().min(1).max(100).optional(),
   })
-  .refine((v) => v.imagePath || v.name, { message: "imagePath or name is required" });
+  .refine((v) => v.imagePath || v.name || v.selectedScientificName, { message: "imagePath or name is required" });
 export type IdentifyRequest = z.infer<typeof identifyRequestSchema>;
 
 export const plantInputSchema = z.object({
@@ -82,8 +102,6 @@ export const feedbackSchema = z.object({
 });
 export type Feedback = z.infer<typeof feedbackSchema>;
 
-const DAY_MS = 24 * 60 * 60 * 1000;
-
 export function wateringIntervalDays(
   care: { waterMinDays: number | null; waterMaxDays: number | null } | null,
   override: number | null,
@@ -102,8 +120,9 @@ export function nextWaterDue(
 ): Date | null {
   const interval = wateringIntervalDays(care, override);
   if (interval == null) return null;
-  const base = lastWatered ?? createdAt;
-  return new Date(base.getTime() + interval * DAY_MS);
+  const due = new Date(lastWatered ?? createdAt);
+  due.setDate(due.getDate() + interval);
+  return due;
 }
 
 export function nextFertilizerDue(
@@ -112,8 +131,9 @@ export function nextFertilizerDue(
   fertilizerEveryDays: number | null,
 ): Date | null {
   if (fertilizerEveryDays == null || fertilizerEveryDays <= 0) return null;
-  const base = lastFertilized ?? createdAt;
-  return new Date(base.getTime() + fertilizerEveryDays * DAY_MS);
+  const due = new Date(lastFertilized ?? createdAt);
+  due.setDate(due.getDate() + fertilizerEveryDays);
+  return due;
 }
 
 export function toDateKey(d: Date): string {
@@ -136,6 +156,8 @@ export function classifyLight(text: string | null | undefined): LightCategory {
 }
 
 export interface SummaryPlant {
+  id: string;
+  nickname: string;
   light: string | null;
   fertilizerType: string | null;
 }
@@ -149,30 +171,45 @@ export interface SummaryTask {
 export interface PlantSummary {
   total: number;
   byLight: Record<LightCategory, number>;
-  fertilizers: { type: string; count: number }[];
+  plantsByLight: Record<LightCategory, SummaryPlant[]>;
+  fertilizers: { type: string; count: number; plants: SummaryPlant[] }[];
   overdue: { plants: number; watering: number; fertilizing: number };
 }
 
 export function summarizePlants(plants: SummaryPlant[], tasks: SummaryTask[], now: Date): PlantSummary {
-  const byLight: Record<LightCategory, number> = { low: 0, medium: 0, bright: 0, direct: 0, unknown: 0 };
-  const types = new Map<string, { type: string; count: number }>();
+  const plantsByLight: Record<LightCategory, SummaryPlant[]> = {
+    low: [], medium: [], bright: [], direct: [], unknown: [],
+  };
+  const types = new Map<string, { type: string; plants: SummaryPlant[] }>();
   for (const p of plants) {
-    byLight[classifyLight(p.light)]++;
+    plantsByLight[classifyLight(p.light)].push(p);
     const type = p.fertilizerType?.trim();
     if (type) {
       const key = type.toLowerCase();
-      const entry = types.get(key) ?? { type, count: 0 };
-      entry.count++;
+      const entry = types.get(key) ?? { type, plants: [] };
+      entry.plants.push(p);
       types.set(key, entry);
     }
   }
+
+  const byLight: Record<LightCategory, number> = { low: 0, medium: 0, bright: 0, direct: 0, unknown: 0 };
+  const sortByName = (a: SummaryPlant, b: SummaryPlant) =>
+    a.nickname.localeCompare(b.nickname, undefined, { sensitivity: "base" }) || a.id.localeCompare(b.id);
+  for (const category of Object.keys(plantsByLight) as LightCategory[]) {
+    plantsByLight[category].sort(sortByName);
+    byLight[category] = plantsByLight[category].length;
+  }
+  const fertilizers = [...types.values()].map(({ type, plants }) => ({
+    type, count: plants.length, plants: plants.sort(sortByName),
+  })).sort((a, b) => b.count - a.count || a.type.localeCompare(b.type));
 
   const today = toDateKey(now);
   const overdueTasks = tasks.filter((t) => t.due && toDateKey(t.due) < today);
   return {
     total: plants.length,
     byLight,
-    fertilizers: [...types.values()].sort((a, b) => b.count - a.count || a.type.localeCompare(b.type)),
+    plantsByLight,
+    fertilizers,
     overdue: {
       plants: new Set(overdueTasks.map((t) => t.plantId)).size,
       watering: overdueTasks.filter((t) => t.kind === "water").length,

@@ -6,8 +6,10 @@ import {
 import { supabase } from "./supabase";
 
 async function post(path: string, body: unknown): Promise<Response> {
+  const baseUrl = process.env.EXPO_PUBLIC_API_URL?.replace(/\/+$/, "");
+  if (!baseUrl) throw new Error("The app's API URL is not configured.");
   const { data } = await supabase.auth.getSession();
-  const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL}${path}`, {
+  const res = await fetch(`${baseUrl}${path}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -17,6 +19,9 @@ async function post(path: string, body: unknown): Promise<Response> {
   });
   if (!res.ok) {
     const err = await res.json().catch(() => null);
+    if (res.status === 404 && err?.error === "Not Found") {
+      throw new Error("The app's service endpoint was not found. Check its API configuration.");
+    }
     throw new Error(typeof err?.error === "string" ? err.error : `Request failed (${res.status})`);
   }
   return res;
@@ -27,6 +32,7 @@ export async function identifyPlant(input: {
   name?: string;
   quality?: "standard" | "high";
   notThis?: string;
+  selectedScientificName?: string;
 }): Promise<IdentifyResult> {
   const res = await post("/identify", input);
   return identifyResultSchema.parse(await res.json());

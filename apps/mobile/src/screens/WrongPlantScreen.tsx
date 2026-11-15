@@ -5,7 +5,11 @@ import type { IdentifyResult } from "@plant-tracker/shared";
 import type { RootStackParamList } from "../navigation";
 import { AppButton, colors } from "../theme";
 import { identifyPlant, sendFeedback } from "../lib/api";
+import { chooseAlternative } from "../lib/alternatives";
+import { AlternativeOptions } from "../components/AlternativeOptions";
+import { usdaSummary } from "../lib/usda";
 import { applyIdentification, getPlant, type PlantDetail } from "../lib/plants";
+import { syncReminders } from "../lib/reminders";
 
 type Props = NativeStackScreenProps<RootStackParamList, "WrongPlant">;
 const msg = (e: unknown) => (e instanceof Error ? e.message : String(e));
@@ -77,6 +81,7 @@ export function WrongPlantScreen({ route, navigation }: Props) {
     run(async () => {
       if (!result) return;
       await applyIdentification(plantId, result);
+      void syncReminders().catch(() => undefined);
       navigation.goBack();
     });
 
@@ -108,7 +113,11 @@ export function WrongPlantScreen({ route, navigation }: Props) {
             {result.commonName} ({result.confidence} confidence)
           </Text>
           <Text style={s.italic}>{result.scientificName}</Text>
+          {usdaSummary(result.usda) ? <Text style={s.text}>{usdaSummary(result.usda)}</Text> : null}
           <Text style={s.text}>{result.care.description}</Text>
+          <AlternativeOptions result={result} busy={busy} onChoose={(choice) => run(async () => {
+            setResult(await chooseAlternative(result, choice));
+          })} />
           <AppButton title="Apply this result" onPress={apply} disabled={busy} />
         </>
       )}

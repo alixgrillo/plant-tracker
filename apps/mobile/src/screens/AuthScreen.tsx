@@ -2,10 +2,12 @@ import { useState } from "react";
 import { Alert, StyleSheet, Text, TextInput, View } from "react-native";
 import { supabase } from "../lib/supabase";
 import { AppButton, Card, colors } from "../theme";
+import { PasswordRecoveryScreen } from "./PasswordRecoveryScreen";
 
 export function AuthScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [resetting, setResetting] = useState(false);
 
   const run = async (mode: "in" | "up") => {
     const creds = { email, password };
@@ -13,6 +15,8 @@ export function AuthScreen() {
       mode === "in" ? await supabase.auth.signInWithPassword(creds) : await supabase.auth.signUp(creds);
     if (error) Alert.alert("Error", error.message);
   };
+
+  if (resetting) return <PasswordRecoveryScreen onExit={() => setResetting(false)} />;
 
   return (
     <View style={s.container}>
@@ -24,6 +28,7 @@ export function AuthScreen() {
         <TextInput style={s.input} placeholder="Password" placeholderTextColor={colors.muted} secureTextEntry value={password} onChangeText={setPassword} />
         <AppButton title="Sign in" onPress={() => run("in")} />
         <AppButton title="Create account" variant="secondary" onPress={() => run("up")} />
+        <AppButton title="Forgot password?" variant="secondary" onPress={() => setResetting(true)} />
       </Card>
     </View>
   );

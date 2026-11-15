@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { buildApp } from "./app.js";
 import { OpenAIIdentifier } from "./ai.js";
+import { UsdaCheckedIdentifier } from "./usda.js";
 
 const env = (k: string) => {
   const v = process.env[k];
@@ -12,7 +13,9 @@ const supabase = createClient(env("SUPABASE_URL"), env("SUPABASE_SERVICE_ROLE_KE
 const model = process.env.OPENAI_MODEL ?? "gpt-4o-mini";
 
 const app = await buildApp({
-  identifier: new OpenAIIdentifier(env("OPENAI_API_KEY"), model, process.env.OPENAI_MODEL_HIGH ?? "gpt-4o"),
+  identifier: new UsdaCheckedIdentifier(
+    new OpenAIIdentifier(env("OPENAI_API_KEY"), model, process.env.OPENAI_MODEL_HIGH ?? "gpt-4o"),
+  ),
   async verifyToken(token) {
     const { data, error } = await supabase.auth.getUser(token);
     return error ? null : (data.user?.id ?? null);

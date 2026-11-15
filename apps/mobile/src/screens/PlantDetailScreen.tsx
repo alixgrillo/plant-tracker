@@ -1,10 +1,14 @@
-import { useCallback, useState } from "react";
-import { ActivityIndicator, Alert, Image, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useCallback, useRef, useState } from "react";
+import { ActivityIndicator, Alert, Image, Modal, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { syncReminders } from "../lib/reminders";
 import type { RootStackParamList } from "../navigation";
 import { identifyPlant } from "../lib/api";
+import { chooseAlternative } from "../lib/alternatives";
+import { AlternativeOptions } from "../components/AlternativeOptions";
+import type { IdentifyResult } from "@plant-tracker/shared";
+import { usdaSummary } from "../lib/usda";
 import { nextFertilizerDue, nextWaterDue, wateringIntervalDays } from "@plant-tracker/shared";
 import {
   applyIdentification,
@@ -33,6 +37,8 @@ export function PlantDetailScreen({ route, navigation }: Props) {
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const busyRef = useRef(false);
+  const [newResult, setNewResult] = useState<IdentifyResult | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -52,12 +58,15 @@ export function PlantDetailScreen({ route, navigation }: Props) {
   );
 
   const run = async (fn: () => Promise<void>) => {
+    if (busyRef.current) return;
+    busyRef.current = true;
     setBusy(true);
     try {
       await fn();
     } catch (e) {
       Alert.alert("Something went wrong", msg(e));
     } finally {
+      busyRef.current = false;
       setBusy(false);
     }
   };
@@ -82,21 +91,7 @@ export function PlantDetailScreen({ route, navigation }: Props) {
       const r = await identifyPlant(
         plant.photo_path ? { imagePath: plant.photo_path } : { name: plant.nickname },
       );
-      Alert.alert(
-        "Update with AI result?",
-        `${r.commonName} (${r.confidence} confidence)\n\nThis replaces the current species and care info.`,
-        [
-          { text: "Cancel", style: "cancel" },
-          {
-            text: "Update",
-            onPress: () =>
-              run(async () => {
-                await applyIdentification(plantId, r);
-                await load();
-              }),
-          },
-        ],
-      );
+      setNewResult(r);
     });
 
   const remove = () =>
@@ -108,6 +103,7 @@ export function PlantDetailScreen({ route, navigation }: Props) {
         onPress: () =>
           run(async () => {
             await deletePlant(plantId, plant?.photo_path ?? null);
+            void syncReminders().catch(() => undefined);
             navigation.goBack();
           }),
       },
@@ -161,6 +157,31 @@ export function PlantDetailScreen({ route, navigation }: Props) {
           </Card>
         ) : null}
         {plant.notes ? <Section icon="📝" title="Notes" body={plant.notes} /> : null}
+
+        <Modal visible={!!newResult} animationType="slide" onRequestClose={() => {
+          if (!busy) setNewResult(null);
+        }}>
+          {newResult ? <ScrollView contentContainerStyle={s.reviewContainer}>
+          <Card style={s.section}>
+            <Text style={s.sectionTitle}>Review AI result</Text>
+            <Text style={s.text}>{newResult.commonName} ({newResult.confidence} confidence)</Text>
+            <Text style={s.italic}>{newResult.scientificName}</Text>
+            {usdaSummary(newResult.usda) ? <Text style={s.text}>{usdaSummary(newResult.usda)}</Text> : null}
+            <Text style={s.text}>{newResult.care.description}</Text>
+            <AlternativeOptions result={newResult} busy={busy} onChoose={(choice) => run(async () => {
+              setNewResult(await chooseAlternative(newResult, choice));
+            })} />
+            <Text style={s.text}>Applying this replaces the current species and care info.</Text>
+            <AppButton title="Apply this result" disabled={busy} onPress={() => run(async () => {
+              await applyIdentification(plantId, newResult);
+              void syncReminders().catch(() => undefined);
+              setNewResult(null);
+              await load();
+            })} />
+            <AppButton title="Cancel" variant="secondary" disabled={busy} onPress={() => setNewResult(null)} />
+          </Card>
+          </ScrollView> : null}
+        </Modal>
 
         <Card style={s.statusCard}>
           <View style={s.statusCol}>
@@ -278,4 +299,5 @@ const s = StyleSheet.create({
   muted: { color: colors.muted },
   buttons: { marginTop: 16, gap: 10 },
   error: { margin: 24, color: colors.danger },
+  reviewContainer: { padding: 16, paddingBottom: 40, backgroundColor: colors.bg, flexGrow: 1 },
 });

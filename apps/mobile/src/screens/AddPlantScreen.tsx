@@ -3,8 +3,12 @@ import { ActivityIndicator, Alert, Image, ScrollView, StyleSheet, Text, TextInpu
 import * as ImagePicker from "expo-image-picker";
 import * as ImageManipulator from "expo-image-manipulator";
 import { decode } from "base64-arraybuffer";
-import type { IdentifyResult } from "@plant-tracker/shared";
+import type { IdentifyResult, PlantAlternative } from "@plant-tracker/shared";
 import { identifyPlant } from "../lib/api";
+import { chooseAlternative } from "../lib/alternatives";
+import { AlternativeOptions } from "../components/AlternativeOptions";
+import { usdaSummary } from "../lib/usda";
+import { syncReminders } from "../lib/reminders";
 import { supabase } from "../lib/supabase";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../navigation";
@@ -43,9 +47,22 @@ export function AddPlantScreen({ navigation }: NativeStackScreenProps<RootStackP
       if (error) throw error;
       setPhotoUri(small.uri);
       setPhotoPath(path);
+      setResult(null);
       setResult(await identifyPlant({ imagePath: path }));
     } catch (e) {
       Alert.alert("Could not identify plant", String(e instanceof Error ? e.message : e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const choose = async (choice: PlantAlternative) => {
+    if (!result) return;
+    setBusy(true);
+    try {
+      setResult(await chooseAlternative(result, choice));
+    } catch (e) {
+      Alert.alert("Could not load care for this plant", String(e instanceof Error ? e.message : e));
     } finally {
       setBusy(false);
     }
@@ -88,6 +105,7 @@ export function AddPlantScreen({ navigation }: NativeStackScreenProps<RootStackP
         });
         if (e2) throw e2;
       }
+      void syncReminders().catch(() => undefined);
       navigation.goBack();
     } catch (e) {
       Alert.alert("Save failed", String(e instanceof Error ? e.message : e));
@@ -110,6 +128,7 @@ export function AddPlantScreen({ navigation }: NativeStackScreenProps<RootStackP
           <Text style={s.h}>{result.commonName}</Text>
           <Chip label={`${result.confidence} confidence`} tone={result.confidence === "high" ? "green" : "amber"} />
           <Text style={s.i}>{result.scientificName}</Text>
+          {usdaSummary(result.usda) ? <Text style={s.body}>{usdaSummary(result.usda)}</Text> : null}
           <Text style={s.body}>{result.care.description}</Text>
           <Text style={s.label}>☀️ Light</Text><Text style={s.body}>{result.care.light}</Text>
           <Text style={s.label}>💧 Water every {result.care.waterMinDays}-{result.care.waterMaxDays} days</Text>
@@ -134,6 +153,7 @@ export function AddPlantScreen({ navigation }: NativeStackScreenProps<RootStackP
           <Text style={s.label}>💚 Healthy signs</Text><Text style={s.body}>{result.care.healthSigns}</Text>
         </Card>
       )}
+      {result && <AlternativeOptions result={result} busy={busy} onChoose={choose} />}
       <AppButton title="Save plant" onPress={save} disabled={busy} />
       <AppButton title="Cancel" variant="secondary" onPress={() => navigation.goBack()} />
     </ScrollView>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { syncReminders } from "./src/lib/reminders";
+import { clearReminders, syncReminders } from "./src/lib/reminders";
 import { ActivityIndicator, AppState, Appearance, Text, View } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { NavigationContainer, DefaultTheme, useNavigation } from "@react-navigation/native";
@@ -12,6 +12,7 @@ import { AuthScreen } from "./src/screens/AuthScreen";
 import { PlantListScreen } from "./src/screens/PlantListScreen";
 import { CalendarScreen } from "./src/screens/CalendarScreen";
 import { SummaryScreen } from "./src/screens/SummaryScreen";
+import { ReminderSettingsScreen } from "./src/screens/ReminderSettingsScreen";
 import { AddPlantScreen } from "./src/screens/AddPlantScreen";
 import { PlantDetailScreen } from "./src/screens/PlantDetailScreen";
 import { EditPlantScreen } from "./src/screens/EditPlantScreen";
@@ -68,6 +69,7 @@ function MainTabs() {
       />
       <Tabs.Screen name="Calendar" component={CalendarScreen} options={{ title: "Care calendar", tabBarLabel: "Calendar", tabBarIcon: tabIcon("📅") }} />
       <Tabs.Screen name="Summary" component={SummaryScreen} options={{ title: "Summary", tabBarIcon: tabIcon("📊") }} />
+      <Tabs.Screen name="Reminders" component={ReminderSettingsScreen} options={{ title: "Reminders", tabBarIcon: tabIcon("🔔") }} />
     </Tabs.Navigator>
   );
 }
@@ -86,12 +88,16 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (!session) return;
+    if (!ready) return;
+    if (!session) {
+      void clearReminders().catch(() => undefined);
+      return;
+    }
     const run = () => void syncReminders().catch(() => undefined);
     run();
     const sub = AppState.addEventListener("change", (s) => s === "active" && run());
     return () => sub.remove();
-  }, [session]);
+  }, [ready, session]);
 
   if (!ready) return <ActivityIndicator style={{ flex: 1 }} />;
 

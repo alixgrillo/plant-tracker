@@ -1,8 +1,10 @@
 import { useCallback, useState } from "react";
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, View } from "react-native";
-import { useFocusEffect } from "@react-navigation/native";
-import type { LightCategory, PlantSummary } from "@plant-tracker/shared";
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import type { LightCategory, PlantSummary, SummaryPlant } from "@plant-tracker/shared";
 import { loadSummary } from "../lib/plants";
+import type { RootStackParamList } from "../navigation";
 import { Card, colors } from "../theme";
 
 const LIGHT_LABELS: [LightCategory, string, string][] = [
@@ -14,7 +16,29 @@ const LIGHT_LABELS: [LightCategory, string, string][] = [
 ];
 
 export function SummaryScreen() {
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [summary, setSummary] = useState<PlantSummary | null>(null);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+
+  const toggle = (key: string) => setExpanded((previous) => {
+    const next = new Set(previous);
+    if (next.has(key)) next.delete(key);
+    else next.add(key);
+    return next;
+  });
+  const plantList = (plants: SummaryPlant[], showLight = false) => (
+    <View style={s.plantList}>
+      {plants.map((plant) => (
+        <Pressable key={plant.id} accessibilityRole="button"
+          accessibilityLabel={`Open ${plant.nickname}`}
+          onPress={() => navigation.navigate("PlantDetail", { plantId: plant.id })}
+          style={({ pressed }) => [s.plantRow, pressed && { opacity: 0.6 }]}>
+          <Text style={s.plantName}>{plant.nickname}</Text>
+          {showLight && plant.light?.trim() ? <Text style={s.plantDetail}>{plant.light}</Text> : null}
+        </Pressable>
+      ))}
+    </View>
+  );
 
   useFocusEffect(
     useCallback(() => {
@@ -57,13 +81,18 @@ export function SummaryScreen() {
         {summary.total === 0 ? <Text style={s.muted}>No plants yet.</Text> : null}
         {LIGHT_LABELS.filter(([k]) => summary.byLight[k] > 0).map(([k, label, color]) => (
           <View key={k}>
-            <View style={s.barHead}>
-              <Text style={s.rowLabel}>{label}</Text>
-              <Text style={s.rowValue}>{summary.byLight[k]}</Text>
-            </View>
-            <View style={s.track}>
-              <View style={[s.fill, { backgroundColor: color, width: `${(summary.byLight[k] / maxLight) * 100}%` }]} />
-            </View>
+            <Pressable accessibilityRole="button" accessibilityState={{ expanded: expanded.has(`light:${k}`) }}
+              accessibilityLabel={`${label}, ${summary.byLight[k]} plants`}
+              onPress={() => toggle(`light:${k}`)}>
+              <View style={s.barHead}>
+                <Text style={s.rowLabel}>{label}</Text>
+                <Text style={s.rowValue}>{summary.byLight[k]} {expanded.has(`light:${k}`) ? "▴" : "▾"}</Text>
+              </View>
+              <View style={s.track}>
+                <View style={[s.fill, { backgroundColor: color, width: `${(summary.byLight[k] / maxLight) * 100}%` }]} />
+              </View>
+            </Pressable>
+            {expanded.has(`light:${k}`) ? plantList(summary.plantsByLight[k], true) : null}
           </View>
         ))}
       </Card>
@@ -72,9 +101,15 @@ export function SummaryScreen() {
       <Card>
         {summary.fertilizers.length ? (
           summary.fertilizers.map((f, i) => (
-            <View key={f.type} style={[s.row, i > 0 && s.rowBorder]}>
-              <Text style={s.rowLabel}>🧴 {f.type}</Text>
-              <Text style={s.rowValue}>{f.count} plant{f.count === 1 ? "" : "s"}</Text>
+            <View key={f.type} style={i > 0 && s.rowBorder}>
+              <Pressable style={s.row} accessibilityRole="button"
+                accessibilityState={{ expanded: expanded.has(`fertilizer:${f.type.toLowerCase()}`) }}
+                accessibilityLabel={`${f.type}, ${f.count} plants`}
+                onPress={() => toggle(`fertilizer:${f.type.toLowerCase()}`)}>
+                <Text style={s.rowLabel}>🧴 {f.type}</Text>
+                <Text style={s.rowValue}>{f.count} plant{f.count === 1 ? "" : "s"} {expanded.has(`fertilizer:${f.type.toLowerCase()}`) ? "▴" : "▾"}</Text>
+              </Pressable>
+              {expanded.has(`fertilizer:${f.type.toLowerCase()}`) ? plantList(f.plants) : null}
             </View>
           ))
         ) : (
@@ -102,4 +137,8 @@ const s = StyleSheet.create({
   rowBorder: { borderTopWidth: StyleSheet.hairlineWidth, borderColor: colors.border },
   rowLabel: { flex: 1, color: colors.text, paddingRight: 12 },
   rowValue: { color: colors.primaryDark, fontWeight: "700" },
+  plantList: { marginTop: 6, marginBottom: 4 },
+  plantRow: { paddingVertical: 8, paddingLeft: 12, borderLeftWidth: 2, borderLeftColor: colors.leaf },
+  plantName: { color: colors.primaryDark, fontWeight: "600" },
+  plantDetail: { color: colors.muted, marginTop: 2 },
 });

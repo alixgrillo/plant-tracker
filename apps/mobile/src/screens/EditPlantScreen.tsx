@@ -5,6 +5,7 @@ import { careEditSchema } from "@plant-tracker/shared";
 import type { RootStackParamList } from "../navigation";
 import { AppButton, colors } from "../theme";
 import { getPlant, saveCare, updatePlant } from "../lib/plants";
+import { syncReminders } from "../lib/reminders";
 
 type Props = NativeStackScreenProps<RootStackParamList, "EditPlant">;
 
@@ -85,6 +86,7 @@ export function EditPlantScreen({ route, navigation }: Props) {
         water_interval_override: interval,
       });
       if (care) await saveCare(plantId, care, "manual");
+      void syncReminders().catch(() => undefined);
       navigation.goBack();
     } catch (e) {
       Alert.alert("Save failed", e instanceof Error ? e.message : String(e));

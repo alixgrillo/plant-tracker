@@ -183,13 +183,13 @@ export async function listSchedule(): Promise<ScheduleItem[]> {
 
 export async function loadSummary(): Promise<PlantSummary> {
   const [{ data, error }, schedule] = await Promise.all([
-    supabase.from("plants").select("id, care_profiles(light, fertilizer_type)"),
+    supabase.from("plants").select("id, nickname, care_profiles(light, fertilizer_type)"),
     listSchedule(),
   ]);
   if (error) throw error;
   const plants = (data ?? []).map((p) => {
     const cp = Array.isArray(p.care_profiles) ? p.care_profiles[0] : p.care_profiles;
-    return { light: cp?.light ?? null, fertilizerType: cp?.fertilizer_type ?? null };
+    return { id: p.id, nickname: p.nickname, light: cp?.light ?? null, fertilizerType: cp?.fertilizer_type ?? null };
   });
   return summarizePlants(plants, schedule, new Date());
 }

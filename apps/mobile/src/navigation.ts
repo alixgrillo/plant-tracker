@@ -11,4 +11,5 @@ export type TabParamList = {
   PlantList: undefined;
   Calendar: undefined;
   Summary: undefined;
+  Reminders: undefined;
 };

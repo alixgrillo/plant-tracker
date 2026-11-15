@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Calendar } from "react-native-calendars";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
@@ -9,12 +9,12 @@ import { syncReminders } from "../lib/reminders";
 import { listSchedule, markFertilized, markWatered, type ScheduleItem } from "../lib/plants";
 import { AppButton, Card, colors } from "../theme";
 
-const DAY_MS = 24 * 60 * 60 * 1000;
-
 export function CalendarScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [items, setItems] = useState<ScheduleItem[] | null>(null);
   const [selected, setSelected] = useState(toDateKey(new Date()));
+  const pendingRef = useRef(new Set<string>());
+  const [pending, setPending] = useState<Set<string>>(new Set());
 
   const load = useCallback(async () => {
     try {
@@ -32,6 +32,9 @@ export function CalendarScreen() {
   );
 
   const completed = async (item: ScheduleItem) => {
+    if (pendingRef.current.has(item.id)) return;
+    pendingRef.current.add(item.id);
+    setPending(new Set(pendingRef.current));
     try {
       if (item.kind === "water") await markWatered(item.plantId);
       else await markFertilized(item.plantId);
@@ -39,12 +42,18 @@ export function CalendarScreen() {
       void syncReminders().catch(() => undefined);
     } catch (e) {
       Alert.alert("Could not save", e instanceof Error ? e.message : String(e));
+    } finally {
+      pendingRef.current.delete(item.id);
+      setPending(new Set(pendingRef.current));
     }
   };
 
   const { overdue, today, week, byDay, marked, noSchedule } = useMemo(() => {
-    const todayKey = toDateKey(new Date());
-    const weekEnd = toDateKey(new Date(Date.now() + 7 * DAY_MS));
+    const now = new Date();
+    const todayKey = toDateKey(now);
+    const end = new Date(now);
+    end.setDate(end.getDate() + 7);
+    const weekEnd = toDateKey(end);
     const scheduled = (items ?? []).filter((i) => i.due);
     const keyOf = (i: ScheduleItem) => toDateKey(i.due!);
     const byDay: Record<string, ScheduleItem[]> = {};
@@ -85,6 +94,7 @@ export function CalendarScreen() {
         variant={item.kind === "water" ? "primary" : "secondary"}
         title={item.kind === "water" ? "✓ Watered" : "✓ Fertilized"}
         onPress={() => completed(item)}
+        disabled={pending.has(item.id)}
       />
     </Card>
   );

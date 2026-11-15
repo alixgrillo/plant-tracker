@@ -16,7 +16,7 @@ export interface Deps {
 }
 
 export async function buildApp(deps: Deps) {
-  const app = Fastify({ logger: true });
+  const app = Fastify({ logger: true, routerOptions: { ignoreDuplicateSlashes: true } });
   await app.register(rateLimit, { global: false });
 
   const cap = deps.highQualityDailyCap ?? 3;
@@ -69,6 +69,7 @@ export async function buildApp(deps: Deps) {
           name: parsed.data.name,
           quality: parsed.data.quality,
           notThis: parsed.data.notThis,
+          selectedScientificName: parsed.data.selectedScientificName,
         });
       } catch (err) {
         req.log.error(err);
